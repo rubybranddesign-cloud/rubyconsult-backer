@@ -1,1 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root { --primary: #111; --bg: #fafafa; --border: #ddd; --focus: #d4a3a3; --card-bg: #fff; }
+    
+    body { background-color: #f4f4f4; margin: 0; padding: 20px; font-family: 'Helvetica Neue', Arial, "PingFang TC", sans-serif; color: #333;}
+    
+    .dashboard-container { max-width: 800px; margin: 30px auto; }
+    
+    .header { text-align: center; margin-bottom: 30px; }
+    .brand-logo { max-width: 200px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.05)); }
+    .header h1 { font-size: 22px; color: var(--primary); letter-spacing: 2px; margin-top: 15px;}
 
+    .search-box {
+      background: var(--card-bg); padding: 20px; border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+    }
+    .search-box input {
+      width: 100%; padding: 14px 16px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 15px; box-sizing: border-box; outline: none;
+      transition: border-color 0.3s;
+    }
+    .search-box input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(212, 163, 163, 0.2); }
+
+    .list-container { display: flex; flex-direction: column; gap: 10px; }
+    .list-btn {
+      background: var(--card-bg); border: 1px solid var(--border); padding: 18px 20px;
+      border-radius: 8px; text-align: left; font-size: 15px; cursor: pointer;
+      transition: all 0.2s ease; display: flex; justify-content: space-between; align-items: center;
+    }
+    .list-btn:hover { border-color: var(--focus); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .list-btn .meta { font-size: 13px; color: #888; }
+    .list-btn .main-info { font-weight: bold; color: var(--primary); font-size: 16px; }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      display: none; justify-content: center; align-items: flex-start;
+      overflow-y: auto; z-index: 1000; padding: 40px 20px; box-sizing: border-box;
+    }
+    .modal-content {
+      background: var(--card-bg); width: 100%; max-width: 680px; 
+      border-radius: 12px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    .close-btn {
+      position: absolute; top: 20px; right: 20px; background: none; border: none;
+      font-size: 24px; cursor: pointer; color: #888; transition: color 0.2s;
+    }
+    .close-btn:hover { color: var(--primary); }
+
+    .modal-content h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 12px; display: block; text-align: center; font-size: 26px;}
+    .read-only-badge { background: #eee; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #666; margin-left: 10px; vertical-align: middle;}
+
+    .section-title { font-size: 18px; font-weight: 700; margin: 35px 0 16px; color: var(--primary); display: flex; align-items: center; }
+    .section-title::before { content: ""; display: inline-block; width: 10px; height: 10px; background: var(--focus); margin-right: 12px; border-radius: 2px; }
+    
+    .form-group { margin-bottom: 28px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 15px; color: #222; }
+    .form-group .hint { font-size: 13px; color: #666; margin-bottom: 12px; line-height: 1.5; }
+    
+    .form-group input[type="text"], .form-group textarea {
+      width: 100%; padding: 14px 16px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 15px; box-sizing: border-box; background: var(--bg);
+      transition: all 0.3s ease;
+    }
+    .form-group input[type="text"]:focus, .form-group textarea:focus { border-color: var(--focus); outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(212, 163, 163, 0.2);}
+    
+    .radio-group { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+    .radio-group label { font-weight: 500; cursor: pointer; display: flex; align-items: center; font-size: 15px; color: #333; }
+    .radio-group input { margin-right: 10px; transform: scale(1.2); }
+
+    .action-btns { display: flex; gap: 15px; margin-top: 30px; }
+    .btn-save { flex: 2; background: var(--primary); color: #fff; border: none; padding: 18px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.3s; letter-spacing: 2px;}
+    .btn-save:hover { background: #333; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15);}
+    .btn-cancel { flex: 1; background: #eee; color: #333; border: none; padding: 18px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+    
+    .loading { text-align: center; padding: 40px; color: #666; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1nXa9E9-EOFEzt8A1fxaZVEfuIRCSiJyo" alt="露比設計" class="brand-logo">
+    <h1>品牌諮詢紀錄管理中心</h1>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="請輸入日期、姓名、品牌名稱或任何關鍵字篩選...">
+  </div>
+
+  <div id="loading" class="loading">資料載入中，請稍候...</div>
+  <div id="listContainer" class="list-container"></div>
+</div>
+
+<div id="editModal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal()">×</button>
+    <h2>品牌深度探索紀錄編輯</h2>
+    
+    <form id="editForm">
+      <input type="hidden" id="editRowIndex" name="rowIndex">
+      
+      <div class="form-group" style="margin-top: 20px;">
+        <label>填表日期 <span class="read-only-badge">唯讀</span></label>
+        <input type="text" id="editDate" readonly style="background: #e9e9e9; color:#666; cursor: not-allowed; padding: 14px 16px;">
+      </div>
+
+      <div class="section-title">0. 品牌基本資訊</div>
+      <div class="form-group">
+        <label>聯絡人姓名 / 職稱</label>
+        <input type="text" name="contactName" required>
+      </div>
+      <div class="form-group">
+        <label>品牌 / 公司名稱</label>
+        <input type="text" name="companyName" required>
+      </div>
+      <div class="form-group">
+        <label>所屬產業</label>
+        <div class="hint">例如：科技軟體、餐飲生活、金融服務、美業...</div>
+        <input type="text" name="industry">
+      </div>
+
+      <div class="section-title">1. 品牌核心與商業痛點</div>
+      <div class="form-group">
+        <label>品牌特質個性</label>
+        <div class="hint">你想像，如果你的品牌如果是一個人？那他的個性會是什麼？<br>(EX: Chanel：優雅的獨裁者、Nike：勇於挑戰自我 ....)</div>
+        <input type="text" name="persona">
+      </div>
+      <div class="form-group">
+        <label>品牌的挑戰</label>
+        <div class="hint">創立這個品牌初衷？目前品牌在推廣中遇到了什麼阻礙？是否精準傳遞產品的價值？</div>
+        <textarea name="businessPain" rows="3"></textarea>
+      </div>
+
+      <div class="section-title">2. 使命與未來願景</div>
+      <div class="form-group">
+        <label>未來的期望</label>
+        <div class="hint">五年後，當人們提到您的品牌，第一時間他們的描述會是什麼？<br>(Ex:50嵐，手搖飲的霸主)</div>
+        <input type="text" name="visionAdjective">
+      </div>
+      <div class="form-group">
+        <label>品牌核心動機</label>
+        <div class="radio-group">
+          <label><input type="radio" name="coreMotivation" value="為客戶解決需求"> 為客戶解決需求（例如：阿里巴巴，讓天下沒有難做的生意）</label>
+          <label><input type="radio" name="coreMotivation" value="使客戶獲得快樂與感官體驗"> 使客戶獲得快樂與感官體驗（例如：Disney樂園，地球上最快樂的地方）</label>
+          <label><input type="radio" name="coreMotivation" value="與客戶建立信任的關係"> 與客戶建立信任的關係（例如：遠傳，只有遠傳、沒有距離）</label>
+        </div>
+      </div>
+
+      <div class="section-title">3. 核心價值與品牌忠誠度</div>
+      <div class="form-group">
+        <label>品牌的情感黏著點</label>
+        <div class="hint">如果你的品牌明天就要消失了，你認為哪一類的客戶最有可能感到難過？</div>
+        <textarea name="tribeLoyalty" rows="2"></textarea>
+      </div>
+
+      <div class="section-title">4. 感官體驗與美學突破</div>
+      <div class="form-group">
+        <label>品牌色調</label>
+        <div class="hint">你希望你的品牌帶給人們什麼視覺感受？（亮或暗、鮮明或神秘、溫暖或熱情？）</div>
+        <input type="text" name="emotionalImprint">
+      </div>
+      <div class="form-group">
+        <label>突破框架</label>
+        <div class="hint">在認知你的品牌同行中，有哪些他們經營市場的狀態、或是品牌的印象，是你想要解決或是創新的？</div>
+        <textarea name="breakRules" rows="3"></textarea>
+      </div>
+
+      <div class="action-btns">
+        <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+        <button type="submit" class="btn-save" id="saveBtn">儲存變更</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let allRecords = [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    google.script.run.withSuccessHandler(renderList).getDashboardData();
+  });
+
+  function renderList(records) {
+    if (records) allRecords = records;
+    document.getElementById('loading').style.display = 'none';
+    
+    const container = document.getElementById('listContainer');
+    const keyword = document.getElementById('searchInput').value.toLowerCase();
+    container.innerHTML = '';
+
+    const filtered = allRecords.filter(rec => {
+      const fullText = Object.values(rec).join(' ').toLowerCase();
+      return fullText.includes(keyword);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="loading">找不到符合的資料。</div>';
+      return;
+    }
+
+    filtered.forEach(rec => {
+      const btn = document.createElement('button');
+      btn.className = 'list-btn';
+      btn.innerHTML = `
+        <span class="main-info">${rec.date} - ${rec.contactName} - ${rec.companyName}</span>
+        <span class="meta">✏️ 編輯</span>
+      `;
+      btn.onclick = () => openModal(rec);
+      container.appendChild(btn);
+    });
+  }
+
+  document.getElementById('searchInput').addEventListener('input', () => renderList());
+
+  function openModal(record) {
+    const form = document.getElementById('editForm');
+    document.getElementById('editRowIndex').value = record.rowIndex;
+    document.getElementById('editDate').value = record.date; 
+    
+    ['contactName', 'companyName', 'industry', 'persona', 'businessPain', 
+     'visionAdjective', 'tribeLoyalty', 'emotionalImprint', 'breakRules'].forEach(key => {
+       if(form.elements[key]) form.elements[key].value = record[key] || '';
+    });
+
+    
+    
+    if (record.coreMotivation) {
+      const radios = form.querySelectorAll('input[name="coreMotivation"]');
+      radios.forEach(radio => {
+        if (record.coreMotivation.includes(radio.value)) {
+          radio.checked = true;
+        }
+      });
+    }
+
+    document.getElementById('editModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden'; 
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('editForm').reset(); 
+  }
+
+  document.getElementById('editForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.innerText = '儲存中...';
+    saveBtn.disabled = true;
+
+    const formData = new FormData(this);
+    const newData = Object.fromEntries(formData.entries());
+    const rowIndex = parseInt(newData.rowIndex);
+
+    google.script.run
+      .withSuccessHandler(response => {
+        alert(response.message);
+        closeModal();
+        saveBtn.innerText = '儲存變更';
+        saveBtn.disabled = false;
+        document.getElementById('listContainer').innerHTML = '';
+        document.getElementById('loading').style.display = 'block';
+        google.script.run.withSuccessHandler(renderList).getDashboardData();
+      })
+      .withFailureHandler(error => {
+        alert('儲存失敗：' + error);
+        saveBtn.innerText = '儲存變更';
+        saveBtn.disabled = false;
+      })
+      .updateRecord(rowIndex, newData);
+  });
+</script>
+
+</body>
+</html>
